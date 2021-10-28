@@ -60,7 +60,9 @@ public:
         }
 
         // http requent
-        //boost::beast::http::request<boost::beast::http::string_body> req{boost::beast::http::verb::get, std::string(parser.path()), 11};
+        req_.method(boost::beast::http::verb::get);
+        req_.target(std::string(parser_.path()));
+        req_.version(11);
         req_.set(boost::beast::http::field::host, std::string(parser_.host()));
         req_.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
         boost::beast::http::write(stream_, req_, ec);
@@ -112,6 +114,9 @@ public:
                     return;
                 }
 
+                req_.method(boost::beast::http::verb::get);
+                req_.target(std::string(parser_.path()));
+                req_.version(11);
                 req_.set(boost::beast::http::field::host, std::string(parser_.host()));
                 req_.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
                 boost::beast::http::async_write(stream_, req_, [this, callback = std::forward<ResponseCallbackType>(callback)](const boost::system::error_code& ec, std::size_t bytes_transferred) mutable
@@ -142,7 +147,9 @@ public:
                     });
                 });
             });
-        });        
+        });
+
+        return {};
     }
 
 private:
