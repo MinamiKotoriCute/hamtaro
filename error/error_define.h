@@ -7,6 +7,13 @@
 #include <boost/leaf.hpp>
 
 #define NEW_ERROR boost BOOST_LEAF_NEW_ERROR
+#define CO_LEAF_CHECK(r)\
+    {\
+        static_assert(::boost::leaf::is_result_type<typename std::decay<decltype(r)>::type>::value, "BOOST_LEAF_CHECK requires a result type");\
+        auto && BOOST_LEAF_TMP = r;\
+        if( !BOOST_LEAF_TMP )\
+            co_return BOOST_LEAF_TMP.error();\
+    }
 
 struct ErrorInfo
 {

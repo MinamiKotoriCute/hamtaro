@@ -8,22 +8,33 @@ void f()
         []() -> boost::leaf::result<void>
         {
             boost::asio::io_context io_context;
+
             HttpClient http_client(io_context);
             BOOST_LEAF_AUTO(res, http_client.get("http://myip.com.tw/"));
-            std::cout << res << std::endl;
+            std::cout << "get: " << res << std::endl;
+
             HttpClient http_client2(io_context);
             BOOST_LEAF_CHECK(http_client2.async_get("http://myip.com.tw/", [](boost::leaf::result<std::string> &&r)
             {
                 if (r)
                 {
-                    std::cout << "good" << std::endl;
-                    std::cout << r.value() << std::endl;
-                }
-                else
-                {
-                    std::cout << "gg" << std::endl;
+                    std::cout << "async_get: " << r.value() << std::endl;
                 }
             }));
+
+            HttpClient http_client3(io_context);
+            boost::asio::co_spawn(io_context,
+                [&io_context]() -> boost::asio::awaitable<void>
+                {
+                    HttpClient http_client3(io_context);
+                    auto r = co_await http_client3.co_get("http://myip.com.tw/");
+                    if (r)
+                    {
+                        std::cout << "co_get: " << r.value() << std::endl;
+                    }
+                },
+                boost::asio::detached);
+
 
             io_context.run();
             return {};

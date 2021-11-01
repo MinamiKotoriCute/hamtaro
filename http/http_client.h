@@ -152,6 +152,31 @@ public:
         return {};
     }
 
+    boost::asio::awaitable<ResponseResultType> co_get(const std::string &url)
+    {
+        CO_LEAF_CHECK(parser_.parse(url));
+
+        auto results = co_await resolver_.async_resolve(parser_.host(), parser_.service(), boost::asio::use_awaitable);
+        co_await stream_.async_connect(results, boost::asio::use_awaitable);
+        
+        req_.method(boost::beast::http::verb::get);
+        req_.target(std::string(parser_.path()));
+        req_.version(11);
+        req_.set(boost::beast::http::field::host, std::string(parser_.host()));
+        req_.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+        co_await boost::beast::http::async_write(stream_, req_, boost::asio::use_awaitable);
+        co_await boost::beast::http::async_read(stream_, rsp_buffer_, rsp_, boost::asio::use_awaitable);
+
+        boost::system::error_code ec;
+        stream_.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec && ec != boost::beast::errc::not_connected)
+        {
+            co_return NEW_ERROR(HandleError{ec.message()});
+        }
+
+        co_return rsp_.body();
+    }
+
 private:
     Executor& executor_;
     url_parser parser_;
