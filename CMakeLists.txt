@@ -11,18 +11,14 @@ set(hamtaro_error
     error/error_define.cpp
 )
 
-set(hamtaro_example
-    example/main.cpp
-)
-
 set(hamtaro_http
     http/http_client.h
+    http/tcp_client.h
     http/url_parser.h
     http/url_parser.cpp
 )
 
 add_library(hamtaro
-    ${hamtaro_example}
     ${hamtaro_error}
     ${hamtaro_http}
 )

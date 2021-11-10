@@ -1,4 +1,5 @@
 #pragma once
+
 #include <functional>
 #include <optional>
 #include <memory>
@@ -8,8 +9,6 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/leaf.hpp>
-
-#include <glog/logging.h>
 
 #include "error/error_define.h"
 #include "url_parser.h"
