@@ -7,6 +7,7 @@
 #include <boost/leaf.hpp>
 
 #define NEW_ERROR boost BOOST_LEAF_NEW_ERROR
+
 #define CO_LEAF_CHECK(r)\
     {\
         auto && BOOST_LEAF_TMP = r;\
@@ -14,6 +15,16 @@
         if( !BOOST_LEAF_TMP )\
             co_return BOOST_LEAF_TMP.error();\
     }
+
+#define CO_LEAF_ASSIGN(v, r)\
+    auto && BOOST_LEAF_TMP = r;\
+    static_assert(::boost::leaf::is_result_type<typename std::decay<decltype(BOOST_LEAF_TMP)>::type>::value, "The CO_LEAF_AUTO macro requires a result type as the second argument");\
+    if( !BOOST_LEAF_TMP )\
+        co_return BOOST_LEAF_TMP.error();\
+    v = std::forward<decltype(BOOST_LEAF_TMP)>(BOOST_LEAF_TMP).value()
+
+#define CO_LEAF_AUTO(v, r)\
+    CO_LEAF_ASSIGN(auto v, r)
 
 struct ErrorInfo
 {
