@@ -26,6 +26,7 @@ add_library(hamtaro
 target_link_libraries(hamtaro
     INTERFACE
         -pthread
+        glog
 )
 
 target_include_directories(hamtaro PUBLIC .)
