@@ -1,26 +1,27 @@
 cmake_minimum_required(VERSION 3.5)
 
+
+FIND_PACKAGE( Boost 1.78 )
+INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
+
 set(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines")
 
 project(hamtaro LANGUAGES CXX)
 
 
-set(hamtaro_error
-    error/error_define.h
-    error/error_define.cpp
-)
-
-set(hamtaro_http
-    http/http_client.h
-    http/tcp_client.h
-    http/url_parser.h
-    http/url_parser.cpp
+set(hamtaro_common
+    common/error_handle.h
+    common/result.cpp
+    common/result.h
+    common/tcp_client.cpp
+    common/tcp_client.h
+    common/url_parser.cpp
+    common/url_parser.h
 )
 
 add_library(hamtaro
-    ${hamtaro_error}
-    ${hamtaro_http}
+    ${hamtaro_common}
 )
 
 target_link_libraries(hamtaro

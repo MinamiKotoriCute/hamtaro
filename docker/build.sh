@@ -1,0 +1,1 @@
+docker build -t cpp_compile:1.1.0 .

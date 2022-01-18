@@ -10,7 +10,7 @@ void f()
             boost::asio::io_context io_context;
 
             HttpClient http_client(io_context);
-            BOOST_LEAF_AUTO(res, http_client.get("http://myip.com.tw/"));
+            BOOST_LEAF_AUTO(res, http_client.get("https://myip.com.tw/"));
             std::cout << "get: " << res << std::endl;
 
             io_context.run();
