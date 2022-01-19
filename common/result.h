@@ -9,6 +9,8 @@
 #define RESULT_ERROR(...) Result<void>(ResultFailureType{}, ##__VA_ARGS__)
 #define RESULT_SUCCESS Result<void>()
 
+#define RESULT_VARIABLE_TMP result_tmp_ ## __LINE__
+
 #define RESULT_CHECK(e) \
 { \
     auto &&r = e; \
@@ -19,33 +21,35 @@
     } \
 }
 
-#define RESULT_TRY(r, e) \
-r = e; \
-if (r.has_error()) \
+#define RESULT_TRY(v, e) \
+auto && RESULT_VARIABLE_TMP = e; \
+if ( !RESULT_VARIABLE_TMP ) \
 { \
-    LOG(INFO) << r.unique_error_id(); \
-    return r; \
+    LOG(INFO) << RESULT_VARIABLE_TMP.unique_error_id(); \
+    return RESULT_VARIABLE_TMP; \
 } \
+v = std::forward<decltype(RESULT_VARIABLE_TMP)>(RESULT_VARIABLE_TMP).value();
 
 #define RESULT_AUTO(r, e) RESULT_TRY(auto &&r, e)
 
 #define RESULT_CO_CHECK(e) \
 { \
     auto &&r = e; \
-    if (r.has_error()) \
+    if ( !r ) \
     { \
         LOG(INFO) << r.unique_error_id(); \
         co_return r; \
     } \
 }
 
-#define RESULT_CO_TRY(r, e) \
-r = e; \
-if (r.has_error()) \
+#define RESULT_CO_TRY(v, e) \
+auto && RESULT_VARIABLE_TMP = e; \
+if ( !RESULT_VARIABLE_TMP ) \
 { \
-    LOG(INFO) << r.unique_error_id(); \
-    co_return r; \
+    LOG(INFO) << RESULT_VARIABLE_TMP.unique_error_id(); \
+    co_return RESULT_VARIABLE_TMP; \
 } \
+v = std::forward<decltype(RESULT_VARIABLE_TMP)>(RESULT_VARIABLE_TMP).value();
 
 #define RESULT_CO_AUTO(r, e) RESULT_CO_TRY(auto &&r, e)
 
@@ -65,6 +69,9 @@ template<>
 class Result<void>
 {
     using this_type = Result;
+
+    template<typename T>
+    friend class Result;
 
 public:
     Result() :
@@ -104,7 +111,7 @@ public:
 
     operator bool() const
     {
-        return has_error();
+        return !has_error();
     }
 
     bool has_error() const
@@ -122,20 +129,24 @@ public:
         return unique_error_id_;
     }
 
+    friend std::ostream& operator<<(std::ostream &os, const Result &other)
+    {
+        os << other.unique_error_id_ << " " << other.error_;
+        return os;
+    }
+
 protected:
     int64_t unique_error_id_;
     std::string error_;
-
-private:
-    void print()
-    {
-    }
 };
 
 template<typename ValueType>
 class Result
 {
     using this_type = Result;
+
+    template<typename T>
+    friend class Result;
 
 public:
     Result() :
@@ -160,6 +171,18 @@ public:
     {
     }
 
+    Result(const Result<void> &other) :
+        unique_error_id_(other.unique_error_id_),
+        error_(other.error_)
+    {
+    }
+
+    Result(Result<void> &&other) :
+        unique_error_id_(std::forward<Result<void>>(other).unique_error_id_),
+        error_(std::forward<Result<void>>(other).error_)
+    {
+    }
+
     template<typename U>
     Result(const Result<U> &other) :
         unique_error_id_(other.unique_error_id_),
@@ -171,7 +194,7 @@ public:
     template<typename U>
     Result(Result<U> &&other) :
         unique_error_id_(std::forward<U>(other).unique_error_id_),
-        error_(std::forward<U>(other).error_),        
+        error_(std::forward<U>(other).error_),
         value_(std::forward<U>(other).value_)
     {
     }
@@ -187,7 +210,7 @@ public:
 
     operator bool() const
     {
-        return has_error();
+        return !has_error();
     }
 
     bool has_error() const
@@ -203,6 +226,26 @@ public:
     int64_t unique_error_id() const
     {
         return unique_error_id_;
+    }
+
+    ValueType&& value() &&
+    {
+        return std::move(value_);
+    }
+
+    ValueType& value() &
+    {
+        return value_;
+    }
+
+    const ValueType& value() const &
+    {
+        return value_;
+    }
+
+    const ValueType& value() const &&
+    {
+        return value_;
     }
 
 protected:

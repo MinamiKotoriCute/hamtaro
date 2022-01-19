@@ -45,6 +45,8 @@ boost::asio::awaitable<TcpClient::ConnectResultType> TcpClient::connect(const st
     {
         co_return RESULT_ERROR("connect fail. url:") << url << " error_message:" << ec.what();
     }
+
+    co_return RESULT_SUCCESS;
 }
 
 void TcpClient::disconnect()
