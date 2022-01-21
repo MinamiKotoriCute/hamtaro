@@ -7,25 +7,22 @@ boost::asio::awaitable<result<void>> f(boost::asio::io_context &io_context)
 {
     TcpServer tcp_server(io_context);
     RESULT_CO_CHECK(tcp_server.listen("0.0.0.0", 51000));
-    
-    while (true)
+
+    RESULT_CO_AUTO(client, co_await tcp_server.accept());
+
+    std::vector<char> buffer;
+    buffer.resize(5);
+    RESULT_CO_CHECK(co_await client->read(buffer));
+
+    std::stringstream ss;
+    for (const auto &c : buffer)
     {
-        RESULT_CO_AUTO(socket, co_await tcp_server.accept());
-        TcpClient client(std::move(*socket.get()));
-
-        std::vector<char> buffer;
-        buffer.resize(5);
-        RESULT_CO_CHECK(co_await client.read(buffer));
-
-        std::stringstream ss;
-        for (const auto &c : buffer)
-        {
-            ss << c;
-        }
-        LOG(INFO) << "receive:" << ss.str();
-
-        RESULT_CO_CHECK(co_await client.write(std::move(buffer)));
+        ss << c;
     }
+    LOG(INFO) << "receive:" << ss.str();
+
+    RESULT_CO_CHECK(co_await client->write(std::move(buffer)));
+        
 }
 
 // nc 127.0.0.1 51000

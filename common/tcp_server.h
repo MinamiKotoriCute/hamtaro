@@ -6,11 +6,12 @@
 
 #include "awaitable.h"
 #include "error_handle.h"
+#include "tcp_client.h"
 
 class TcpServer
 {
 public:
-    using AcceptResultType = result<std::unique_ptr<boost::asio::ip::tcp::socket>>;
+    using AcceptResultType = result<std::unique_ptr<TcpClient>>;
 
     TcpServer(boost::asio::io_context& io_context);
     TcpServer(boost::asio::strand<boost::asio::io_context::executor_type>& strand);

@@ -68,7 +68,6 @@ awaitable<TcpServer::AcceptResultType> TcpServer::accept()
         co_return RESULT_ERROR("bind listen fail. what:") << ec.message();
     }
 
-    auto p = std::make_unique<boost::asio::ip::tcp::socket>(acceptor_.get_executor());
-    (*p.get()) = std::move(socket);
-    co_return p;
+    auto client = std::make_unique<TcpClient>(std::move(socket));
+    co_return std::move(client);
 }
