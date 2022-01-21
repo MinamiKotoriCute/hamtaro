@@ -9,7 +9,9 @@
 #define RESULT_ERROR(...) Result<void>(ResultFailureType{}, ##__VA_ARGS__)
 #define RESULT_SUCCESS Result<void>()
 
-#define RESULT_VARIABLE_TMP result_tmp_ ## __LINE__
+#define RESULT_CONCAT_INNER(a, b) a ## b
+#define RESULT_CONCAT(a, b) RESULT_CONCAT_INNER(a, b)
+#define RESULT_VARIABLE_TMP RESULT_CONCAT(result_tmp_, __LINE__)
 
 #define RESULT_CHECK(e) \
 { \
@@ -246,6 +248,12 @@ public:
     const ValueType& value() const &&
     {
         return value_;
+    }
+
+    friend std::ostream& operator<<(std::ostream &os, const Result &other)
+    {
+        os << other.unique_error_id_ << " " << other.error_;
+        return os;
     }
 
 protected:

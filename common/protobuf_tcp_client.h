@@ -53,6 +53,9 @@ public:
     {
     }
 
+    basic_ProtobufTcpClient(const basic_ProtobufTcpClient &) = delete;
+    basic_ProtobufTcpClient(basic_ProtobufTcpClient&&) = default;
+
 	awaitable<ConnectResultType> connect(const std::string& url)
     {
         return tcp_client_.connect(url);
@@ -63,14 +66,9 @@ public:
         is_receiving_ = true;
         while (is_receiving_)
         {
-            auto result = co_await pack_tcp_reader_.read();
-            if (result.has_error())
-            {
-                LOG(WARNING) << result;
-                break;
-            }
+            RESULT_CO_AUTO(buffer, co_await pack_tcp_reader_.read());
 
-            RESULT_CO_AUTO(message, pack_coder_.decode(std::move(result.value())));
+            RESULT_CO_AUTO(message, pack_coder_.decode(std::move(buffer)));
 
             const auto &pb_name = message->GetDescriptor()->full_name();
 
@@ -97,6 +95,8 @@ public:
         }
 
         is_receiving_ = false;
+
+        co_return RESULT_SUCCESS;
     }
 
     void close()
