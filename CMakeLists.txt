@@ -26,6 +26,8 @@ set(hamtaro_common
     common/result.h
     common/tcp_client.cpp
     common/tcp_client.h
+    common/tcp_server.cpp
+    common/tcp_server.h
     common/url_parser.cpp
     common/url_parser.h
 )
