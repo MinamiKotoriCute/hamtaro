@@ -22,6 +22,7 @@ set(hamtaro_common
     common/pack_tcp_reader.cpp
     common/pack_tcp_reader.h
     common/protobuf_tcp_client.h
+    common/protobuf_tcp_server.h
     common/result.cpp
     common/result.h
     common/tcp_client.cpp

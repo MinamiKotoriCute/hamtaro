@@ -185,19 +185,31 @@ public:
     {
     }
 
-    template<typename U>
-    Result(const Result<U> &other) :
+    Result(const Result &other) :
         unique_error_id_(other.unique_error_id_),
         error_(other.error_),
         value_(other.value_)
     {
     }
 
+    Result(Result &&other) :
+        unique_error_id_(std::forward<Result>(other).unique_error_id_),
+        error_(std::forward<Result>(other).error_),
+        value_(std::forward<Result>(other).value_)
+    {
+    }
+
+    template<typename U>
+    Result(const Result<U> &other) :
+        unique_error_id_(other.unique_error_id_),
+        error_(other.error_)
+    {
+    }
+
     template<typename U>
     Result(Result<U> &&other) :
         unique_error_id_(std::forward<U>(other).unique_error_id_),
-        error_(std::forward<U>(other).error_),
-        value_(std::forward<U>(other).value_)
+        error_(std::forward<U>(other).error_)
     {
     }
 

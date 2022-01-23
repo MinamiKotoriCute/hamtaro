@@ -21,13 +21,9 @@ public:
     using SendResultType = TcpClient::WriteResultType;
     using SendCallbackType = std::function<void(SendResultType&&)>;
     using WaitCallbackType = std::function<void(boost::system::error_code, std::shared_ptr<google::protobuf::Message>)>;
-    using MessageResultType = const google::protobuf::Message &;
-    using MessageCallbackType = std::function<void(const MessageResultType&)>;
-    template<typename T>
-    using RealMessageCallbackType = std::function<void(const T&)>;
-    using MessageCoroutineCallbackType = std::function<result<void>(const MessageResultType&)>;
-    template<typename T>
-    using RealMessageCoroutineCallbackType = std::function<result<void>(const T&)>;
+    using MessageResultType = const google::protobuf::Message&;
+    using MessageCallbackType = std::function<void(MessageResultType)>;
+    using MessageCoroutineCallbackType = std::function<awaitable<result<void>>(MessageResultType)>;
 
     basic_ProtobufTcpClient(boost::asio::io_context& io_context) :
         tcp_client_(io_context),
@@ -53,6 +49,14 @@ public:
     {
     }
 
+    basic_ProtobufTcpClient(TcpClient tcp_client) :
+        tcp_client_(std::move(tcp_client)),
+        pack_tcp_reader_(tcp_client_),
+        current_version_(0),
+        is_receiving_(false)
+    {
+    }
+
     basic_ProtobufTcpClient(const basic_ProtobufTcpClient &) = delete;
     basic_ProtobufTcpClient(basic_ProtobufTcpClient&&) = default;
 
@@ -68,7 +72,14 @@ public:
         {
             RESULT_CO_AUTO(buffer, co_await pack_tcp_reader_.read());
 
-            RESULT_CO_AUTO(message, pack_coder_.decode(std::move(buffer)));
+            auto&& r = pack_coder_.decode(std::move(buffer));
+            if (!r)
+            {
+                LOG(INFO) << r.error_message();
+                continue;
+            }
+            auto &&message = std::move(r).value();
+            //RESULT_CO_AUTO(message, pack_coder_.decode(std::move(buffer)));
 
             const auto &pb_name = message->GetDescriptor()->full_name();
 
@@ -84,14 +95,36 @@ public:
                 }
             }
 
-            // {
-            //     auto it = message_callback_group_.find(pb_name);
-            //     if (it != message_callback_group_.end()) {
-            //         auto &callback = it->second;
-            //         callback(message);
-            //         continue;
-            //     }
-            // }
+            {
+                auto it = message_callback_group_.find(pb_name);
+                if (it != message_callback_group_.end())
+                {
+                    auto &callback = it->second;
+                    callback(*message.get());
+                    continue;
+                }
+            }
+
+            {
+                auto it = message_coroutine_callback_group_.find(pb_name);
+                if (it != message_coroutine_callback_group_.end())
+                {
+                    auto callback = it->second;
+                    boost::asio::co_spawn(tcp_client_.get_executor(),
+                    [callback, message]() -> awaitable<result<void>>
+                    {
+                        return callback(*message.get());
+                    },
+                    [](std::exception_ptr e, result<void> result)
+                    {
+                        if (result.has_error())
+                        {
+                            LOG(INFO) << "unique_error_id:" << result.unique_error_id() << " error_message:" << result.error_message() << "\n";
+                        }
+                    });
+                    continue;
+                }
+            }
         }
 
         is_receiving_ = false;
@@ -151,7 +184,7 @@ public:
         }
         message_callback_group_[pb_name] = std::forward<MessageCallbackType>(callback);
     }
-    void add_message_callback(const std::string &pb_name, MessageCoroutineCallbackType &&callback)
+    void add_co_message_callback(const std::string &pb_name, MessageCoroutineCallbackType &&callback)
     {        
         if (message_coroutine_callback_group_.find(pb_name) != message_coroutine_callback_group_.end())
         {
@@ -162,35 +195,48 @@ public:
     template<typename T>
     struct message_callback_lambda_helper
     {
-        using type = void;
     };
     template<typename Ret, typename Class, typename Args>
     struct message_callback_lambda_helper<Ret (Class::*)(Args) const>
     {
         using type = Args;
+        using ret = Ret;
     };
     template<typename Ret, typename Class, typename Args>
     struct message_callback_lambda_helper<Ret (Class::*)(Args)>
     {
         using type = Args;
+        using ret = Ret;
     };
     template<typename Callback>
     void add_message_callback(Callback &&callback)
     {
-        using Arg = typename message_callback_lambda_helper<decltype(&Callback::operator())>::type;
+        using Helper = message_callback_lambda_helper<decltype(&Callback::operator())>;
+        using Arg = typename Helper::type;
         using T = std::remove_reference_t<std::remove_const_t<Arg>>;
-        add_message_callback(T::descriptor()->full_name(), [callback = std::forward<Callback>(callback)] (MessageResultType &&result)
+
+        if constexpr (is_awaitable_v<typename Helper::ret>)
         {
-            callback(dynamic_cast<const T&>(result));
-        });
+            add_co_message_callback(T::descriptor()->full_name(), [callback = std::forward<Callback>(callback)] (MessageResultType r) -> awaitable<result<void>>
+            {
+                co_return co_await callback(dynamic_cast<const T&>(r));
+            });
+        }
+        else
+        {
+            add_message_callback(T::descriptor()->full_name(), [callback = std::forward<Callback>(callback)] (MessageResultType result)
+            {
+                return callback(dynamic_cast<const T&>(result));
+            });
+        }
     }
     template<typename Class, typename Function>
     void add_message_callback(Class *ptr, Function &&f)
     {
         using T = std::remove_reference_t<typename message_callback_lambda_helper<Function>::type>::element_type;
-        add_message_callback(T::descriptor()->full_name(), [ptr, f = std::forward<Function>(f)] (MessageResultType &&result)
+        add_message_callback(T::descriptor()->full_name(), [ptr, f = std::forward<Function>(f)] (MessageResultType result)
         {
-            (ptr->*f)(std::unique_ptr<T>(dynamic_cast<const T&>(result)));
+            (ptr->*f)(dynamic_cast<const T&>(result));
         });
     }
 
@@ -212,6 +258,7 @@ private:
             );
     }
 
+    boost::asio::any_io_executor executor_;
     TcpClient tcp_client_;
     PackTcpReader pack_tcp_reader_;
     PackCoder pack_coder_;

@@ -75,9 +75,7 @@ result<std::shared_ptr<google::protobuf::Message>> PackCoder::decode(std::vector
 	if (nullptr == descriptor)
 	{
 		// 由於連結優化，需要顯示使用該類才能找的到
-        auto error_result = RESULT_ERROR("protobuf_name not find. protobuf_name:") << protobuf_name;
-        LOG(WARNING) << error_result;
-		return error_result;
+		return RESULT_ERROR("protobuf_name not find. protobuf_name:") << protobuf_name;
 	}
 
 	const google::protobuf::Message* prototype = google::protobuf::MessageFactory::generated_factory()->GetPrototype(descriptor);

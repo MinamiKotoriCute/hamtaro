@@ -20,6 +20,7 @@ public:
     void disconnect();
     boost::asio::awaitable<ReadResultType> read(std::vector<char> &read_buffer);
     boost::asio::awaitable<WriteResultType> write(std::vector<char> &&data);
+    boost::asio::any_io_executor get_executor();
 
 private:
 	boost::asio::ip::tcp::resolver resolver_;

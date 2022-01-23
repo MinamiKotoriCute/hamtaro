@@ -120,3 +120,8 @@ boost::asio::awaitable<TcpClient::ReadResultType> TcpClient::read(std::vector<ch
 
     co_return RESULT_SUCCESS;
 }
+
+boost::asio::any_io_executor TcpClient::get_executor()
+{
+    return socket_.get_executor();
+}
