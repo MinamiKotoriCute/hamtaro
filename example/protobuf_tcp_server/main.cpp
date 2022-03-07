@@ -7,10 +7,6 @@
 #include "common/protobuf_tcp_client.h"
 #include "common/protobuf_tcp_server.h"
 
-#include "pb/pb2.pb.h"
-#include "pb/pb4.pb.h"
-#include "pb/game.pb.h"
-
 int port = 0;
 
 boost::asio::awaitable<result<void>> g(basic_ProtobufTcpClient<PackCoder, PackTcpReader> &protobuf_tcp_client)
